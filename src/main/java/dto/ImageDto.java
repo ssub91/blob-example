@@ -7,7 +7,7 @@ package dto;
  * byte[] 필드 타입 형태 
  *
  */
-public class ImageByteArrayDto {
+public class ImageDto {
 	private Long no;
 	private byte[] data;
 

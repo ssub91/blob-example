@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 
 import javax.sql.DataSource;
 
@@ -13,23 +14,37 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.support.SqlLobValue;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.stereotype.Repository;
 
-import dto.ImageByteArrayDto;
+import dto.ImageDto;
 
 @Repository
 public class ImageDao {
 
 	private JdbcTemplate jdbcTemplate;
+	private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
 	@Autowired
 	public ImageDao(DataSource dataSource) {
 		jdbcTemplate = new JdbcTemplate(dataSource);
+		namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
 	}
 
-	public Long insertImage(final ImageByteArrayDto imageDto) {
+	/**
+	 * 
+	 * @param imageDto
+	 * @return
+	 * 
+	 * byte[]로 BLOB Insert(C) 처리
+	 * 
+	 */
+	public Long insertImageByRawBytes(final ImageDto imageDto) {
 		final String sql = "INSERT INTO IMAGE_TABLE VALUES (IMAGE_TABLE_SEQ.nextval, ?)";
 
 		KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -45,13 +60,45 @@ public class ImageDao {
 
 		Number key = keyHolder.getKey();
 		if (key == null) {
-			throw new RuntimeException("fails - insert BLOB ata");
+			throw new RuntimeException("fails - insert BLOB data");
+		}
+
+		return key.longValue();
+	}
+
+	/**
+	 * 
+	 * @param imageDto
+	 * @return
+	 * 
+	 * SqlLobValue 으로 BLOB Insert(C) 처리
+	 */
+	public Long insertImageBySqlLobValue(final ImageDto imageDto) {
+		final String sql = "INSERT INTO IMAGE_TABLE VALUES (IMAGE_TABLE_SEQ.nextval, :data)";
+
+		KeyHolder keyHolder = new GeneratedKeyHolder();
+
+		MapSqlParameterSource paramSource = new MapSqlParameterSource();
+		paramSource.addValue( "data", new SqlLobValue(new ByteArrayInputStream(imageDto.getData()), imageDto.getData().length, new DefaultLobHandler()), Types.BLOB);		
+		
+		namedParameterJdbcTemplate.update(sql, paramSource, keyHolder, new String[]{"NO"});
+		
+		Number key = keyHolder.getKey();
+		if (key == null) {
+			throw new RuntimeException("fails - insert BLOB data");
 		}
 
 		return key.longValue();
 	}
 	
-	public Boolean updateImage(final ImageByteArrayDto imageDto) {
+	/**
+	 * 
+	 * @param imageDto
+	 * @return
+	 * 
+	 * byte[]로 BLOB Update(U) 처리
+	 */
+	public Boolean updateImageByRawBytes(final ImageDto imageDto) {
 		final String sql = "UPDATE IMAGE_TABLE SET DATA = ? WHERE NO = ?";
 
 		int count = jdbcTemplate.update(new PreparedStatementCreator() {
@@ -69,14 +116,21 @@ public class ImageDao {
 		return count == 1;
 	}
 
-	public ImageByteArrayDto fetchImage(Long no) {
+	/**
+	 * 
+	 * @param no
+	 * @return
+	 * 
+	 * 
+	 */
+	public ImageDto fetchImage(Long no) {
 		String sql = "SELECT NO, DATA FROM IMAGE_TABLE WHERE NO=?";
 
-		ImageByteArrayDto result = jdbcTemplate.queryForObject(sql, new Object[] {no}, new RowMapper<ImageByteArrayDto>() {
+		ImageDto result = jdbcTemplate.queryForObject(sql, new Object[] {no}, new RowMapper<ImageDto>() {
 			@Override
-			public ImageByteArrayDto mapRow(ResultSet resultSet, int rowNum) throws SQLException {
+			public ImageDto mapRow(ResultSet resultSet, int rowNum) throws SQLException {
 
-				ImageByteArrayDto imageDto = new ImageByteArrayDto();
+				ImageDto imageDto = new ImageDto();
 
 				imageDto.setNo(resultSet.getLong("NO"));
 

@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.ImportResource;
 
+import config2.thirdparty.JasyptConfig;
+
 @Configuration
 @ComponentScan(basePackages={"dao"})
 @Import(value={JasyptConfig.class})
